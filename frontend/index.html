@@ -7,6 +7,32 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <h1>Mascotas Salitrera María Elena 🐶🐱</h1>
+
+<form id="formMascota">
+  <input id="nombre" placeholder="Nombre mascota" required />
+  
+  <select id="tipo" required>
+    <option value="">Tipo</option>
+    <option value="perro">Perro</option>
+    <option value="gato">Gato</option>
+  </select>
+
+  <input id="depto" placeholder="Departamento" required />
+  <input id="contacto" placeholder="Contacto dueño" required />
+
+  <button type="submit">Guardar</button>
+</form>
+
+<hr>
+
+<h2>Listado de Mascotas</h2>
+<ul id="lista"></ul>
+
+<script src="app.js"></script>
+</body>
+</html>
+
     <main class="container">
       <h1>Registro de Mascotas</h1>
       <p>Uso interno para residentes del condominio Salitrera Maria Elena.</p>

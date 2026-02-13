@@ -9,6 +9,9 @@ app.use(cors({
   allowedHeaders: ["Content-Type"]
 }));
 app.use(express.json());
+app.get("/", (req, res) => {
+  res.send("API Mascotas Salitrera funcionando 🐶🐱");
+});
 
 const PORT = process.env.PORT || 3000;
 const DB_PATH = process.env.DB_PATH || "./data/mascotas.db";
