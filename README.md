@@ -60,9 +60,13 @@
 
 **Ubicado en la región de Antofagasta, Chile**
 
-| Fachada | Áreas Comunes | Interior |
-|---------|---------------|----------|
-| ![Fachada](assets/condominio/fachada.jpg) | ![Areas](assets/condominio/areas-comunes.jpg) | ![Interior](assets/condominio/interior.jpg) |
+| Entrada principal | Edificio Salitrera Alemania |
+|-------------------|-----------------------------|
+| ![Entrada principal](assets/condominio/fachada.jpg) | ![Edificio Alemania](assets/condominio/edificio-alemania.jpg) |
+
+| Accesos interiores | Vista general |
+|--------------------|---------------|
+| ![Accesos interiores](assets/condominio/interior-condominio.jpg) | ![Vista general](assets/condominio/vista-general.jpg) |
 
 </div>
 
@@ -1171,8 +1175,9 @@ cp backend/data/mascotas.backup.db backend/data/mascotas.db
 1. Prepara tus fotos (JPG o PNG, máx 5MB)
 2. Renómalas como:
    - `fachada.jpg` - Foto de la fachada principal
-   - `areas-comunes.jpg` - Áreas comunes/patio
-   - `interior.jpg` - Interior del condominio
+   - `edificio-alemania.jpg` - Vista del edificio Salitrera Alemania
+   - `interior-condominio.jpg` - Pasillo o acceso interior
+   - `vista-general.jpg` - Vista general del condominio desde la calle
 3. Coloca en carpeta: `assets/condominio/`
 4. Haz commit y push:
    ```bash
