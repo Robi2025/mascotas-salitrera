@@ -1,11 +1,24 @@
 {
   "name": "salitrera-mascotas-backend",
-  "version": "0.1.0",
-  "description": "API para registro de mascotas del condominio Salitrera Maria Elena",
+  "version": "1.0.0",
+  "description": "API REST para registro de mascotas del condominio Salitrera Maria Elena",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "dev": "node src/index.js"
+    "dev": "node src/index.js",
+    "start": "node src/index.js"
+  },
+  "keywords": [
+    "mascotas",
+    "api",
+    "express",
+    "sqlite",
+    "crud"
+  ],
+  "author": "Condominio Salitrera Maria Elena",
+  "license": "ISC",
+  "engines": {
+    "node": ">=16.0.0"
   },
   "dependencies": {
     "cors": "^2.8.6",
