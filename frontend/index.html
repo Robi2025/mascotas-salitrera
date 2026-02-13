@@ -7,67 +7,60 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <h1>Mascotas Salitrera María Elena 🐶🐱</h1>
-
-<form id="formMascota">
-  <input id="nombre" placeholder="Nombre mascota" required />
-  
-  <select id="tipo" required>
-    <option value="">Tipo</option>
-    <option value="perro">Perro</option>
-    <option value="gato">Gato</option>
-  </select>
-
-  <input id="depto" placeholder="Departamento" required />
-  <input id="contacto" placeholder="Contacto dueño" required />
-
-  <button type="submit">Guardar</button>
-</form>
-
-<hr>
-
-<h2>Listado de Mascotas</h2>
-<ul id="lista"></ul>
-
-<script src="app.js"></script>
-</body>
-</html>
+    <div class="header">
+      <div class="header-content">
+        <h1>🐾 Mascotas Salitrera María Elena</h1>
+        <p class="subtitle">Registro interno para residentes del condominio</p>
+      </div>
+    </div>
 
     <main class="container">
-      <h1>Registro de Mascotas</h1>
-      <p>Uso interno para residentes del condominio Salitrera Maria Elena.</p>
+      <div class="content-grid">
+        <section class="card card-form">
+          <div class="card-header">
+            <h2>Registrar Nueva Mascota</h2>
+            <p class="card-subtitle">Completa los datos de tu mascota</p>
+          </div>
+          
+          <form id="formMascota">
+            <div class="form-group">
+              <label for="nombre">Nombre de la mascota</label>
+              <input id="nombre" placeholder="Ej: Firulais" required />
+            </div>
+            
+            <div class="form-group">
+              <label for="tipo">Tipo de mascota</label>
+              <select id="tipo" required>
+                <option value="">Selecciona una opción</option>
+                <option value="perro">Perro 🐕</option>
+                <option value="gato">Gato 🐈</option>
+              </select>
+            </div>
 
-      <section class="card">
-        <h2>Nueva mascota</h2>
-        <form id="form-mascota">
-          <label>
-            Nombre
-            <input name="nombre" required />
-          </label>
-          <label>
-            Tipo
-            <select name="tipo" required>
-              <option value="perro">Perro</option>
-              <option value="gato">Gato</option>
-            </select>
-          </label>
-          <label>
-            Departamento
-            <input name="departamento" required />
-          </label>
-          <label>
-            Contacto del dueno
-            <input name="contacto" required />
-          </label>
-          <button type="submit">Registrar</button>
-        </form>
-        <div id="msg" class="msg"></div>
-      </section>
+            <div class="form-group">
+              <label for="depto">Número de departamento</label>
+              <input id="depto" placeholder="Ej: 101" required />
+            </div>
 
-      <section class="card">
-        <h2>Mascotas registradas</h2>
-        <ul id="lista"></ul>
-      </section>
+            <div class="form-group">
+              <label for="contacto">Contacto del dueño</label>
+              <input id="contacto" placeholder="Ej: +56 9 1234 5678" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar Mascota</button>
+          </form>
+          
+          <div id="msg" class="msg"></div>
+        </section>
+
+        <section class="card card-list">
+          <div class="card-header">
+            <h2>Mascotas Registradas</h2>
+            <p class="card-subtitle">Listado de todas las mascotas</p>
+          </div>
+          <ul id="lista" class="pets-list"></ul>
+        </section>
+      </div>
     </main>
 
     <script src="app.js"></script>
