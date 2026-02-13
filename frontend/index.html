@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container"></div>
+
     <div class="header">
       <div class="header-content">
         <h1>🐾 Mascotas Salitrera María Elena</h1>
@@ -22,10 +25,17 @@
             <p class="card-subtitle">Completa los datos de tu mascota</p>
           </div>
           
+          <!-- Error Box with Retry -->
+          <div id="error-box" class="error-box">
+            <p id="error-message"></p>
+            <button type="button" class="btn-retry" onclick="window.location.reload()">Reintentar</button>
+          </div>
+          
           <form id="formMascota">
             <div class="form-group">
               <label for="nombre">Nombre de la mascota</label>
-              <input id="nombre" placeholder="Ej: Firulais" required />
+              <input id="nombre" placeholder="Ej: Firulais" required minlength="2" />
+              <span class="error-message">El nombre debe tener al menos 2 caracteres</span>
             </div>
             
             <div class="form-group">
@@ -35,16 +45,19 @@
                 <option value="perro">Perro 🐕</option>
                 <option value="gato">Gato 🐈</option>
               </select>
+              <span class="error-message">Selecciona un tipo de mascota</span>
             </div>
 
             <div class="form-group">
               <label for="depto">Número de departamento</label>
               <input id="depto" placeholder="Ej: 101" required />
+              <span class="error-message">El departamento es obligatorio</span>
             </div>
 
             <div class="form-group">
               <label for="contacto">Contacto del dueño</label>
               <input id="contacto" placeholder="Ej: +56 9 1234 5678" required />
+              <span class="error-message">El contacto es obligatorio</span>
             </div>
 
             <button type="submit" class="btn btn-primary">Guardar Mascota</button>
@@ -58,11 +71,117 @@
             <h2>Mascotas Registradas</h2>
             <p class="card-subtitle">Listado de todas las mascotas</p>
           </div>
+          
+          <!-- Herramientas de administración -->
+          <div class="list-controls">
+            <div class="search-bar">
+              <input 
+                id="searchInput" 
+                type="text" 
+                placeholder="🔍 Buscar por nombre, depto o contacto..."
+                class="search-input"
+              />
+            </div>
+            
+            <div class="filters-row">
+              <div class="filter-group">
+                <label for="filterType">Filtrar por tipo:</label>
+                <select id="filterType" class="filter-select">
+                  <option value="">Todos</option>
+                  <option value="perro">Perros 🐕</option>
+                  <option value="gato">Gatos 🐈</option>
+                </select>
+              </div>
+              
+              <div class="filter-group">
+                <label for="sortBy">Ordenar por:</label>
+                <select id="sortBy" class="filter-select">
+                  <option value="reciente">Más reciente</option>
+                  <option value="nombre-asc">Nombre A-Z</option>
+                  <option value="nombre-desc">Nombre Z-A</option>
+                  <option value="depto-asc">Departamento ↑</option>
+                  <option value="depto-desc">Departamento ↓</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="list-info">
+              <span id="listCount">0 mascotas</span>
+              <button id="clearFilters" class="btn-clear-filters">Limpiar filtros</button>
+            </div>
+          </div>
+          
           <ul id="lista" class="pets-list"></ul>
         </section>
       </div>
     </main>
 
+    <!-- Modal de Edición -->
+    <div id="editModal" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Editar Mascota</h2>
+        </div>
+        
+        <div class="modal-body">
+          <form id="formEditMascota">
+            <div class="form-group">
+              <label for="editNombre">Nombre de la mascota</label>
+              <input id="editNombre" placeholder="Ej: Firulais" required minlength="2" />
+              <span class="error-message">El nombre debe tener al menos 2 caracteres</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="editTipo">Tipo de mascota</label>
+              <select id="editTipo" required>
+                <option value="">Selecciona una opción</option>
+                <option value="perro">Perro 🐕</option>
+                <option value="gato">Gato 🐈</option>
+              </select>
+              <span class="error-message">Selecciona un tipo de mascota</span>
+            </div>
+
+            <div class="form-group">
+              <label for="editDepto">Número de departamento</label>
+              <input id="editDepto" placeholder="Ej: 101" required />
+              <span class="error-message">El departamento es obligatorio</span>
+            </div>
+
+            <div class="form-group">
+              <label for="editContacto">Contacto del dueño</label>
+              <input id="editContacto" placeholder="Ej: +56 9 1234 5678" required />
+              <span class="error-message">El contacto es obligatorio</span>
+            </div>
+          </form>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" id="btnCancelEdit">Cancelar</button>
+          <button type="button" class="btn-save" id="btnSaveEdit">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Confirmación Eliminar -->
+    <div id="deleteModal" class="modal-overlay">
+      <div class="modal confirm-dialog">
+        <div class="modal-header">
+          <h2>Eliminar Mascota</h2>
+        </div>
+        
+        <div class="modal-body">
+          <p>¿Estás seguro de que deseas eliminar a <strong id="deletePetName"></strong>?</p>
+          <p style="font-size: 0.9rem; color: #999; margin-top: 0.5rem;">Esta acción no se puede deshacer.</p>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" id="btnCancelDelete">Cancelar</button>
+          <button type="button" class="btn-delete-confirm" id="btnConfirmDelete">Eliminar</button>
+        </div>
+      </div>
+    </div>
+
     <script src="app.js"></script>
   </body>
+</html>
 </html>

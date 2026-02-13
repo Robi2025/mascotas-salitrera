@@ -1,25 +1,50 @@
-# Node
+# ====== DEPENDENCIAS ======
 node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ====== VARIABLES DE ENTORNO ======
+.env
+.env.local
+.env.*.local
+.env.production
+
+# ====== BASE DE DATOS ======
+*.db
+*.sqlite
+*.sqlite3
+backend/data/
+!backend/data/.gitkeep
+
+# ====== LOGS ======
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Env
-.env
+# ====== IDE ======
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.code-workspace
 
-# OS
+# ====== OS ======
 .DS_Store
 Thumbs.db
+.AppleDouble
+.LSOverride
 
-# Build
+# ====== BUILD & DIST ======
 dist/
 build/
+out/
+coverage/
 
-# SQLite
-*.db
-*.sqlite
-*.sqlite3
-
-# VS Code
-.vscode/
-
+# ====== BACKUPS ======
+*.backup
+*.bak
+*.backup.*

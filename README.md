@@ -52,6 +52,34 @@
 
 ---
 
+## 📸 Galería
+
+### Condominio Salitrera María Elena
+
+<div align="center">
+
+**Ubicado en la región de Antofagasta, Chile**
+
+| Fachada | Áreas Comunes | Interior |
+|---------|---------------|----------|
+| ![Fachada](assets/condominio/fachada.jpg) | ![Areas](assets/condominio/areas-comunes.jpg) | ![Interior](assets/condominio/interior.jpg) |
+
+</div>
+
+### Interfaz de la Aplicación
+
+<div align="center">
+
+| Dashboard | Formulario | Edición |
+|-----------|-----------|---------|
+| ![Dashboard](assets/screenshots/dashboard.png) | ![Formulario](assets/screenshots/formulario.png) | ![Editar](assets/screenshots/editar.png) |
+
+**Panel de búsqueda y filtros** | **Gestión de mascotas** | **Notificaciones en tiempo real** |
+
+</div>
+
+---
+
 ## ⚙️ Stack Tecnológico
 
 <table>
@@ -1137,6 +1165,39 @@ cp backend/data/mascotas.backup.db backend/data/mascotas.db
 
 ---
 
+## � Cómo Agregar Fotos a Este README
+
+### Fotos del Condominio
+1. Prepara tus fotos (JPG o PNG, máx 5MB)
+2. Renómalas como:
+   - `fachada.jpg` - Foto de la fachada principal
+   - `areas-comunes.jpg` - Áreas comunes/patio
+   - `interior.jpg` - Interior del condominio
+3. Coloca en carpeta: `assets/condominio/`
+4. Haz commit y push:
+   ```bash
+   git add assets/condominio/
+   git commit -m "assets: agregar fotos del condominio"
+   git push origin main
+   ```
+
+### Screenshots de la App
+1. Toma capturas de pantalla:
+   - `dashboard.png` - Vista principal con mascotas
+   - `formulario.png` - Vista del formulario de registro
+   - `editar.png` - Modal de edición
+2. Coloca en: `assets/screenshots/`
+3. Haz commit y push:
+   ```bash
+   git add assets/screenshots/
+   git commit -m "assets: agregar capturas de la aplicación"
+   git push origin main
+   ```
+
+Las fotos se mostrarán automáticamente en la sección de **Galería** del README.
+
+---
+
 ## 📦 Dependencias
 
 **Backend:**
@@ -1151,19 +1212,67 @@ cp backend/data/mascotas.backup.db backend/data/mascotas.db
 
 ## 📄 Licencia
 
-Proyecto interno para el condominio Salitrera María Elena.
+Proyecto interno para el condominio Salitrera María Elena.  
+**Licencia:** MIT
+
+Ver archivo [LICENSE](LICENSE) para detalles completos.
 
 ---
 
-## 📞 Soporte
+## 🤝 Contribuir
 
-Si algo no funciona:
+¿Quieres mejorar este proyecto? Consulta [CONTRIBUTING.md](CONTRIBUTING.md)
+
+**Formas de contribuir:**
+- 📸 Agregar fotos del condominio (sistema > Galería)
+- 🐛 Reportar bugs en [Issues](https://github.com/Robi2025/mascotas-salitrera/issues)
+- 💡 Sugerir funcionalidades nuevas
+- 📝 Mejorar documentación
+- 🎨 Mejoras de diseño
+- 🌐 Traducciones
+
+---
+
+## 📞 Contacto y Soporte
+
+### Problemas Técnicos
 1. Revisa la consola del navegador (F12)
 2. Revisa los logs del backend (terminal)
-3. Verifica el Troubleshooting arriba
-4. Contacta al desarrollador
+3. Consulta la sección [Troubleshooting](#-troubleshooting)
+4. Abre un [Issue en GitHub](https://github.com/Robi2025/mascotas-salitrera/issues)
+
+### Información de Contacto
+- **Organización:** Condominio Salitrera María Elena
+- **Ubicación:** Antofagasta, Chile
+- **Desarrollador:** Robi2025
+- **Email:** [Tu email]
+- **Teléfono:** [Tu teléfono]
+
+### Comunidad
+- 💬 [Discussions en GitHub](https://github.com/Robi2025/mascotas-salitrera/discussions)
+- 📧 Puedes contactar directamente a administración
+- 🔔 Star el proyecto si te gustó ⭐
 
 ---
 
-**Última actualización:** 13 de febrero de 2026
-**Versión:** 1.0.0
+<div align="center">
+
+## Por Favor, Contribuye 💚
+
+Este proyecto es un esfuerzo comunitario. Si encuentras valor en él:
+
+1. ⭐ **Dale una estrella** en GitHub
+2. 📸 **Comparte fotos** del condominio
+3. 🐛 **Reporta bugs** que encuentres
+4. 💡 **Sugiere ideas** para mejorar
+5. 👥 **Invita a otros residentes** a usarlo
+
+---
+
+**Última actualización:** 13 de febrero de 2026  
+**Versión:** 1.0.0  
+**Estado:** Production Ready ✅
+
+Hecho con ❤️ para Salitrera María Elena
+
+</div>
