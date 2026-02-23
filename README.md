@@ -16,6 +16,27 @@
 
 ---
 
+## Android (Play Store)
+
+Esta base ya incluye empaquetado Android con Capacitor en `mobile/`.
+
+Pasos resumidos:
+
+1. Publica el backend en internet con HTTPS.
+2. Edita `frontend/config.js` y define `apiBaseUrl` con tu backend publico.
+3. Ejecuta:
+   ```bash
+   cd mobile
+   npm install
+   npm run android:sync
+   npm run android:open
+   ```
+4. En Android Studio genera `Android App Bundle (.aab)` en modo `release`.
+
+Guia completa: `mobile/README.md`
+
+---
+
 ## 📖 Tabla de Contenidos
 
 - [Descripción General](#descripción-general)

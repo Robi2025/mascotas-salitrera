@@ -1,0 +1,19 @@
+{
+  "name": "mascotas-salitrera-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android wrapper (Capacitor) para Mascotas Salitrera",
+  "scripts": {
+    "sync:assets": "node scripts/sync-assets.mjs",
+    "copy": "npm run sync:assets && npx cap copy",
+    "sync": "npm run sync:assets && npx cap sync",
+    "android:add": "npx cap add android",
+    "android:open": "npx cap open android",
+    "android:sync": "npm run sync && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  }
+}

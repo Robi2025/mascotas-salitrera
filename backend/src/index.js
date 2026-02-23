@@ -1,44 +1,50 @@
-import express from "express";import cors from "cors";
+import express from "express";
+import cors from "cors";
 
 import { openDb, initDb } from "./db.js";
 
 const app = express();
 
-// ====== CORS CONFIGURACIÓN ======
+const envAllowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = [
+  "http://127.0.0.1:5500",
+  "http://localhost:5500",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  // Capacitor WebView origin (Android/iOS).
+  "http://localhost",
+  ...envAllowedOrigins,
+];
+
 const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      "http://127.0.0.1:5500",
-      "http://localhost:5500",
-      "http://localhost:3000",
-      "http://127.0.0.1:3000"
-    ];
-    
-    // En desarrollo, permitir sin origin (requests desde archivo local)
+  origin(origin, callback) {
+    // Allow no-origin requests (curl, some webviews).
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
-    } else {
-      callback(new Error("CORS policy: origin no permitido"));
+      return;
     }
+    callback(new Error("CORS policy: origin no permitido"));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type"],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// ====== LOGGING MIDDLEWARE ======
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
 
-// ====== RUTAS PRUEBA ======
-app.get("/", (req, res) => {
-  res.send("API Mascotas Salitrera funcionando 🐶🐱");
+app.get("/", (_req, res) => {
+  res.send("API Mascotas Salitrera funcionando");
 });
 
 const PORT = process.env.PORT || 3000;
@@ -66,23 +72,24 @@ app.post("/mascotas", (req, res) => {
   if (tipo !== "perro" && tipo !== "gato") {
     return res.status(400).json({ error: "invalid_tipo" });
   }
+
   const stmt = db.prepare(
     "INSERT INTO mascotas (nombre, tipo, departamento, contacto) VALUES (?, ?, ?, ?)"
   );
-  stmt.run([nombre, tipo, departamento, contacto], function (err) {
+  stmt.run([nombre, tipo, departamento, contacto], function onInsert(err) {
     if (err) return res.status(500).json({ error: "db_error" });
-    res.status(201).json({ id: this.lastID, nombre, tipo, departamento, contacto });
+    return res
+      .status(201)
+      .json({ id: this.lastID, nombre, tipo, departamento, contacto });
   });
   stmt.finalize();
 });
 
-// ====== PUT /mascotas/:id - ACTUALIZAR MASCOTA ======
 app.put("/mascotas/:id", (req, res) => {
   const { id } = req.params;
   const { nombre, tipo, departamento, contacto } = req.body || {};
 
-  // Validación
-  if (!id || isNaN(id)) {
+  if (!id || Number.isNaN(Number(id))) {
     return res.status(400).json({ error: "invalid_id" });
   }
   if (!nombre || !tipo || !departamento || !contacto) {
@@ -92,55 +99,61 @@ app.put("/mascotas/:id", (req, res) => {
     return res.status(400).json({ error: "invalid_tipo" });
   }
 
-  // Verificar que mascota existe
   db.get("SELECT id FROM mascotas WHERE id = ?", [id], (err, row) => {
     if (err) return res.status(500).json({ error: "db_error" });
     if (!row) return res.status(404).json({ error: "not_found" });
 
-    // Actualizar
     const stmt = db.prepare(
       "UPDATE mascotas SET nombre = ?, tipo = ?, departamento = ?, contacto = ? WHERE id = ?"
     );
-    stmt.run([nombre, tipo, departamento, contacto, id], function (err) {
-      if (err) return res.status(500).json({ error: "db_error" });
-      res.json({ id: parseInt(id), nombre, tipo, departamento, contacto });
-    });
+    stmt.run(
+      [nombre, tipo, departamento, contacto, id],
+      function onUpdate(updateErr) {
+        if (updateErr) return res.status(500).json({ error: "db_error" });
+        return res.json({
+          id: Number(id),
+          nombre,
+          tipo,
+          departamento,
+          contacto,
+        });
+      }
+    );
     stmt.finalize();
   });
 });
 
-// ====== DELETE /mascotas/:id - ELIMINAR MASCOTA ======
 app.delete("/mascotas/:id", (req, res) => {
   const { id } = req.params;
 
-  // Validación
-  if (!id || isNaN(id)) {
+  if (!id || Number.isNaN(Number(id))) {
     return res.status(400).json({ error: "invalid_id" });
   }
 
-  // Verificar que mascota existe
   db.get("SELECT id FROM mascotas WHERE id = ?", [id], (err, row) => {
     if (err) return res.status(500).json({ error: "db_error" });
     if (!row) return res.status(404).json({ error: "not_found" });
 
-    // Eliminar
     const stmt = db.prepare("DELETE FROM mascotas WHERE id = ?");
-    stmt.run([id], function (err) {
-      if (err) return res.status(500).json({ error: "db_error" });
-      res.json({ success: true, id: parseInt(id) });
+    stmt.run([id], function onDelete(deleteErr) {
+      if (deleteErr) return res.status(500).json({ error: "db_error" });
+      return res.json({ success: true, id: Number(id) });
     });
     stmt.finalize();
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`
-╔════════════════════════════════════════════╗
-║  API Mascotas Salitrera escuchando        ║
-║  🚀 http://localhost:${PORT}              ║
-║  ✅ CORS habilitado para:                 ║
-║     - http://127.0.0.1:5500               ║
-║     - http://localhost:5500               ║
-╚════════════════════════════════════════════╝
-  `);
+  console.log("==========================================");
+  console.log("API Mascotas Salitrera escuchando");
+  console.log(`http://localhost:${PORT}`);
+  console.log("CORS local habilitado para:");
+  console.log("- http://127.0.0.1:5500");
+  console.log("- http://localhost:5500");
+  console.log("- http://localhost (Android)");
+  if (envAllowedOrigins.length > 0) {
+    console.log("- Origenes extra desde ALLOWED_ORIGINS:");
+    envAllowedOrigins.forEach((origin) => console.log(`  - ${origin}`));
+  }
+  console.log("==========================================");
 });

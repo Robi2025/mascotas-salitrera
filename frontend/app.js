@@ -1,5 +1,9 @@
 // ====== CONFIGURACIÓN ======
-const API_BASE_URL = "http://localhost:3000";
+const DEFAULT_API_BASE_URL = "http://localhost:3000";
+const API_BASE_URL =
+  window.APP_CONFIG?.apiBaseUrl ||
+  localStorage.getItem("api_base_url") ||
+  DEFAULT_API_BASE_URL;
 const TOAST_DURATION = 3000; // ms
 
 // ====== ELEMENTOS DEL DOM ======
@@ -504,3 +508,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   cargarMascotas();
 });
+
