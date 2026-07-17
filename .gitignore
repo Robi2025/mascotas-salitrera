@@ -43,6 +43,15 @@ dist/
 build/
 out/
 coverage/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/app/build/
+
+# ====== FIRMA ANDROID (NUNCA SUBIR) ======
+*.jks
+*.keystore
+keystore.properties
+mobile/android/app/google-services.json
 
 # ====== BACKUPS ======
 *.backup

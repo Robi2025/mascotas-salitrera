@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "node src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --test --test-isolation=none"
   },
   "keywords": [
     "mascotas",
@@ -18,7 +19,7 @@
   "author": "Condominio Salitrera Maria Elena",
   "license": "ISC",
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "cors": "^2.8.6",

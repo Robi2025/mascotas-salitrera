@@ -2,7 +2,8 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f766e" />
     <title>Mascotas Salitrera Maria Elena</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -17,7 +18,38 @@
       </div>
     </div>
 
+    <div id="userBar" class="user-bar hidden">
+      <span id="currentUser"></span>
+      <button id="logoutBtn" type="button" class="btn-secondary">Cerrar sesión</button>
+    </div>
+
     <main class="container">
+      <section id="loginCard" class="card auth-card">
+        <div class="card-header">
+          <h2>Ingreso de residentes</h2>
+          <p class="card-subtitle">Accede con el correo y contraseña entregados por administración.</p>
+        </div>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginEmail">Correo electrónico</label>
+            <input id="loginEmail" type="email" autocomplete="username" required maxlength="120" />
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Contraseña</label>
+            <input id="loginPassword" type="password" autocomplete="current-password" required minlength="10" />
+          </div>
+          <button type="submit" class="btn btn-primary">Ingresar</button>
+        </form>
+      </section>
+
+      <section id="passwordCard" class="card password-card hidden">
+        <div class="card-header"><h2>Cambiar contraseña</h2></div>
+        <form id="passwordForm">
+          <div class="form-group"><label for="currentPassword">Contraseña actual</label><input id="currentPassword" type="password" required autocomplete="current-password" /></div>
+          <div class="form-group"><label for="newPassword">Contraseña nueva</label><input id="newPassword" type="password" required minlength="10" autocomplete="new-password" /></div>
+          <button type="submit" class="btn btn-primary">Actualizar contraseña</button>
+        </form>
+      </section>
       <section class="card card-gallery">
         <div class="card-header">
           <h2>Galeria del Condominio</h2>
@@ -60,7 +92,7 @@
           <form id="formMascota">
             <div class="form-group">
               <label for="nombre">Nombre de la mascota</label>
-              <input id="nombre" placeholder="Ej: Firulais" required minlength="2" />
+              <input id="nombre" placeholder="Ej: Firulais" required minlength="2" maxlength="80" autocomplete="off" />
               <span class="error-message">El nombre debe tener al menos 2 caracteres</span>
             </div>
             
@@ -76,13 +108,13 @@
 
             <div class="form-group">
               <label for="depto">Número de departamento</label>
-              <input id="depto" placeholder="Ej: 101" required />
+              <input id="depto" placeholder="Ej: 101" required maxlength="20" inputmode="numeric" autocomplete="off" />
               <span class="error-message">El departamento es obligatorio</span>
             </div>
 
             <div class="form-group">
               <label for="contacto">Contacto del dueño</label>
-              <input id="contacto" placeholder="Ej: +56 9 1234 5678" required />
+              <input id="contacto" type="tel" placeholder="Ej: +56 9 1234 5678" required maxlength="30" inputmode="tel" autocomplete="tel" />
               <span class="error-message">El contacto es obligatorio</span>
             </div>
 
@@ -206,6 +238,26 @@
         </div>
       </div>
     </div>
+
+    <section id="adminCard" class="card admin-card hidden">
+      <div class="card-header">
+        <h2>Administrar residentes</h2>
+        <p class="card-subtitle">Crea cuentas y entrega la contraseña directamente al residente.</p>
+      </div>
+      <form id="residentForm">
+        <div class="filters-row">
+          <div class="form-group"><label for="residentName">Nombre</label><input id="residentName" required maxlength="80" /></div>
+          <div class="form-group"><label for="residentEmail">Correo</label><input id="residentEmail" type="email" required maxlength="120" /></div>
+        </div>
+        <div class="filters-row">
+          <div class="form-group"><label for="residentDepartment">Departamento</label><input id="residentDepartment" required maxlength="20" /></div>
+          <div class="form-group"><label for="residentPassword">Contraseña inicial</label><input id="residentPassword" type="password" required minlength="10" autocomplete="new-password" /></div>
+        </div>
+        <small>Mínimo 10 caracteres, con mayúscula, minúscula y número.</small>
+        <button type="submit" class="btn btn-primary">Crear residente</button>
+      </form>
+      <ul id="usersList" class="pets-list"></ul>
+    </section>
 
     <script src="config.js"></script>
     <script src="app.js"></script>

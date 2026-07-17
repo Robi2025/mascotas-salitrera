@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: mascotas-salitrera-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /var/data/mascotas.db
+      - key: SESSION_DAYS
+        value: 30
+      - key: BOOTSTRAP_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://localhost
+    disk:
+      name: mascotas-data
+      mountPath: /var/data
+      sizeGB: 1

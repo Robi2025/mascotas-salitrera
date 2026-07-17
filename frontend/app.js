@@ -1,511 +1,156 @@
-// ====== CONFIGURACIÓN ======
-const DEFAULT_API_BASE_URL = "http://localhost:3000";
-const API_BASE_URL =
-  window.APP_CONFIG?.apiBaseUrl ||
-  localStorage.getItem("api_base_url") ||
-  DEFAULT_API_BASE_URL;
-const TOAST_DURATION = 3000; // ms
+const API_BASE_URL = window.APP_CONFIG?.apiBaseUrl || "http://localhost:3000";
+const TOKEN_KEY = "mascotas_session";
+let token = localStorage.getItem(TOKEN_KEY);
+let currentUser = null;
+let pets = [];
+let editingId = null;
+let deletingId = null;
 
-// ====== ELEMENTOS DEL DOM ======
-const form = document.getElementById("formMascota");
-const lista = document.getElementById("lista");
-const toastContainer = document.getElementById("toast-container");
-const errorBox = document.getElementById("error-box");
-const errorMessage = document.getElementById("error-message");
+const $ = (id) => document.getElementById(id);
+const form = $("formMascota");
+const lista = $("lista");
+const loginCard = $("loginCard");
+const userBar = $("userBar");
+const adminCard = $("adminCard");
+const editModal = $("editModal");
+const deleteModal = $("deleteModal");
 
-// Elementos para herramientas de lista
-const searchInput = document.getElementById("searchInput");
-const filterType = document.getElementById("filterType");
-const sortBy = document.getElementById("sortBy");
-const clearFiltersBtn = document.getElementById("clearFilters");
-const listCount = document.getElementById("listCount");
-
-// Elementos para modales
-const editModal = document.getElementById("editModal");
-const formEditMascota = document.getElementById("formEditMascota");
-const btnCancelEdit = document.getElementById("btnCancelEdit");
-const btnSaveEdit = document.getElementById("btnSaveEdit");
-const deleteModal = document.getElementById("deleteModal");
-const deletePetName = document.getElementById("deletePetName");
-const btnCancelDelete = document.getElementById("btnCancelDelete");
-const btnConfirmDelete = document.getElementById("btnConfirmDelete");
-
-// ====== ESTADO GLOBAL ======
-let mascotasData = []; // Guardar datos originales de API
-let editingId = null; // ID de la mascota siendo editada
-let deletingId = null; // ID de la mascota para eliminar
-
-// ====== SISTEMA DE NOTIFICACIONES (TOAST) ======
-function showToast(message, type = "info", duration = TOAST_DURATION) {
+function showToast(message, type = "info") {
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
-  
-  let icon = "ℹ️";
-  if (type === "success") icon = "✅";
-  if (type === "error") icon = "❌";
-  if (type === "warning") icon = "⚠️";
-  
-  toast.textContent = `${icon} ${message}`;
-  toastContainer.appendChild(toast);
-  
-  if (duration > 0) {
-    setTimeout(() => {
-      toast.classList.add("fade-out");
-      setTimeout(() => toast.remove(), 300);
-    }, duration);
-  }
-  
-  return toast;
+  toast.textContent = message;
+  $("toast-container").appendChild(toast);
+  setTimeout(() => { toast.classList.add("fade-out"); setTimeout(() => toast.remove(), 300); }, 3200);
 }
 
-// Mostrar error box con mensaje
-function showErrorBox(message) {
-  errorMessage.textContent = message;
-  errorBox.classList.add("show");
-  lista.classList.add("loading");
+async function api(path, options = {}) {
+  const headers = { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 401) { clearSession(); throw new Error("Tu sesión venció. Ingresa nuevamente."); }
+  if (!response.ok) throw new Error(errorMessage(data.error));
+  return data;
 }
 
-// Ocultar error box
-function hideErrorBox() {
-  errorBox.classList.remove("show");
-  lista.classList.remove("loading");
+function errorMessage(code) {
+  const messages = {
+    invalid_credentials: "Correo o contraseña incorrectos.", too_many_attempts: "Demasiados intentos. Espera 15 minutos.",
+    email_exists: "Ese correo ya está registrado.", invalid_user_data: "Revisa los datos y la seguridad de la contraseña.",
+    invalid_pet_data: "Revisa los datos de la mascota.", forbidden: "No tienes permiso para esa acción.",
+    admin_required: "Esta acción requiere una cuenta administradora.", invalid_current_password: "La contraseña actual es incorrecta.",
+    weak_password: "La nueva contraseña debe tener 10 caracteres, mayúscula, minúscula y número."
+  };
+  return messages[code] || "No fue posible completar la operación.";
 }
 
-// Validar un campo individual
-function validateField(fieldId) {
-  const field = document.getElementById(fieldId);
-  const formGroup = field.closest(".form-group");
-  const isValid = field.checkValidity() && field.value.trim() !== "";
-  
-  if (!isValid) {
-    formGroup.classList.add("error");
-  } else {
-    formGroup.classList.remove("error");
-  }
-  
-  return isValid;
+function clearSession() {
+  token = null; currentUser = null; localStorage.removeItem(TOKEN_KEY);
+  document.body.classList.remove("authenticated"); loginCard.classList.remove("hidden"); $("passwordCard").classList.add("hidden"); userBar.classList.add("hidden"); adminCard.classList.add("hidden");
 }
 
-// Validar todos los campos
-function validateForm() {
-  const nombre = document.getElementById("nombre");
-  const tipo = document.getElementById("tipo");
-  const depto = document.getElementById("depto");
-  const contacto = document.getElementById("contacto");
-  
-  const fields = [
-    { id: "nombre", minLength: 2 },
-    { id: "tipo" },
-    { id: "depto" },
-    { id: "contacto" }
-  ];
-  
-  let isValid = true;
-  
-  fields.forEach(({ id, minLength }) => {
-    const field = document.getElementById(id);
-    const formGroup = field.closest(".form-group");
-    let fieldValid = field.checkValidity() && field.value.trim() !== "";
-    
-    if (minLength && field.value.trim().length < minLength) {
-      fieldValid = false;
-    }
-    
-    if (!fieldValid) {
-      formGroup.classList.add("error");
-      isValid = false;
-    } else {
-      formGroup.classList.remove("error");
-    }
-  });
-  
-  return isValid;
+function showApp(user) {
+  currentUser = user; document.body.classList.add("authenticated"); loginCard.classList.add("hidden"); $("passwordCard").classList.remove("hidden"); userBar.classList.remove("hidden");
+  $("currentUser").textContent = `${user.name} · ${user.role === "admin" ? "Administrador" : `Depto ${user.department}`}`;
+  const depto = $("depto");
+  if (user.role === "resident") { depto.value = user.department || ""; depto.readOnly = true; adminCard.classList.add("hidden"); }
+  else { depto.readOnly = false; adminCard.classList.remove("hidden"); loadUsers(); }
+  loadPets();
 }
 
-// Validación en tiempo real
-["nombre", "tipo", "depto", "contacto"].forEach(fieldId => {
-  const field = document.getElementById(fieldId);
-  field.addEventListener("blur", () => validateField(fieldId));
-  field.addEventListener("input", () => {
-    if (field.closest(".form-group").classList.contains("error")) {
-      validateField(fieldId);
-    }
-  });
-});
-
-// ====== MODALES - EDITAR ======
-function openEditModal(mascota) {
-  editingId = mascota.id;
-  
-  // Precargar datos
-  document.getElementById("editNombre").value = mascota.nombre;
-  document.getElementById("editTipo").value = mascota.tipo;
-  
-  // Limpiar "Depto" de departamento si existe
-  let depto = mascota.departamento.replace(/^Depto\s*/i, '').trim();
-  document.getElementById("editDepto").value = depto;
-  
-  document.getElementById("editContacto").value = mascota.contacto;
-  
-  // Limpiar errores del modal
-  formEditMascota.querySelectorAll(".form-group").forEach(group => {
-    group.classList.remove("error");
-  });
-  
-  // Mostrar modal
-  editModal.classList.add("active");
-}
-
-function closeEditModal() {
-  editModal.classList.remove("active");
-  editingId = null;
-  formEditMascota.reset();
-}
-
-async function saveEdit() {
-  if (!editingId) return;
-  
-  const nombre = document.getElementById("editNombre").value.trim();
-  const tipo = document.getElementById("editTipo").value;
-  let departamento = document.getElementById("editDepto").value.trim();
-  const contacto = document.getElementById("editContacto").value.trim();
-  
-  // Validar
-  if (!nombre || !tipo || !departamento || !contacto) {
-    showToast("Por favor completa todos los campos", "warning");
-    return;
-  }
-  
-  if (nombre.length < 2) {
-    showToast("El nombre debe tener al menos 2 caracteres", "warning");
-    return;
-  }
-  
-  // Normalizar departamento
-  if (!departamento.toLowerCase().startsWith("depto")) {
-    departamento = `Depto ${departamento}`;
-  }
-  
-  btnSaveEdit.disabled = true;
-  btnSaveEdit.textContent = "Guardando...";
-  
+$("loginForm").addEventListener("submit", async (event) => {
+  event.preventDefault(); const button = event.currentTarget.querySelector("button"); button.disabled = true;
   try {
-    const res = await fetch(`${API_BASE_URL}/mascotas/${editingId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, tipo, departamento, contacto })
-    });
-    
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      throw new Error(error.error || `HTTP ${res.status}`);
-    }
-    
-    showToast(`${nombre} actualizado exitosamente`, "success");
-    closeEditModal();
-    cargarMascotas();
-    
-  } catch (err) {
-    console.error("[API] Error actualizando:", err.message);
-    showToast(`Error: ${err.message}`, "error");
-  } finally {
-    btnSaveEdit.disabled = false;
-    btnSaveEdit.textContent = "Guardar Cambios";
-  }
-}
+    const data = await api("/auth/login", { method: "POST", body: JSON.stringify({ email: $("loginEmail").value.trim(), password: $("loginPassword").value }) });
+    token = data.token; localStorage.setItem(TOKEN_KEY, token); event.currentTarget.reset(); showApp(data.user); showToast("Sesión iniciada.", "success");
+  } catch (error) { showToast(error.message, "error"); } finally { button.disabled = false; }
+});
 
-// ====== MODALES - ELIMINAR ======
-function openDeleteModal(mascota) {
-  deletingId = mascota.id;
-  deletePetName.textContent = mascota.nombre;
-  deleteModal.classList.add("active");
-}
-
-function closeDeleteModal() {
-  deleteModal.classList.remove("active");
-  deletingId = null;
-}
-
-async function confirmDelete() {
-  if (!deletingId) return;
-  
-  btnConfirmDelete.disabled = true;
-  btnConfirmDelete.innerHTML = '<span class="spinner"></span> Eliminando...';
-  
+$("logoutBtn").addEventListener("click", async () => { try { await api("/auth/logout", { method: "POST" }); } catch {} clearSession(); });
+$("passwordForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
   try {
-    const res = await fetch(`${API_BASE_URL}/mascotas/${deletingId}`, {
-      method: "DELETE"
-    });
-    
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      throw new Error(error.error || `HTTP ${res.status}`);
-    }
-    
-    showToast("Mascota eliminada correctamente", "success");
-    closeDeleteModal();
-    cargarMascotas();
-    
-  } catch (err) {
-    console.error("[API] Error eliminando:", err.message);
-    showToast(`Error: ${err.message}`, "error");
-  } finally {
-    btnConfirmDelete.disabled = false;
-    btnConfirmDelete.textContent = "Eliminar";
-  }
+    await api("/auth/password", { method: "PUT", body: JSON.stringify({ currentPassword: $("currentPassword").value, newPassword: $("newPassword").value }) });
+    event.currentTarget.reset(); showToast("Contraseña actualizada.", "success");
+  } catch (error) { showToast(error.message, "error"); }
+});
+
+function filteredPets() {
+  const search = $("searchInput").value.toLowerCase().trim(); const type = $("filterType").value;
+  const result = pets.filter((pet) => !type || pet.tipo === type).filter((pet) => !search || [pet.nombre, pet.departamento, pet.contacto, pet.owner_name].some((v) => String(v || "").toLowerCase().includes(search)));
+  const sort = $("sortBy").value;
+  if (sort === "nombre-asc") result.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  if (sort === "nombre-desc") result.sort((a, b) => b.nombre.localeCompare(a.nombre));
+  if (sort.startsWith("depto")) result.sort((a, b) => a.departamento.localeCompare(b.departamento, undefined, { numeric: true }) * (sort.endsWith("desc") ? -1 : 1));
+  return result;
 }
 
-// ====== VERIFICAR CONEXIÓN A API ======
-async function checkAPIConnection() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/health`, { signal: AbortSignal.timeout(3000) });
-    if (!res.ok) throw new Error("API no responde correctamente");
-    return true;
-  } catch (err) {
-    console.error("[API] Connection check failed:", err.message);
-    return false;
-  }
-}
-
-// ====== FUNCIÓN DE RENDERIZACIÓN CON FILTROS ======
-function renderMascotas() {
-  const searchTerm = searchInput.value.toLowerCase().trim();
-  const typeFilter = filterType.value;
-  const sortOption = sortBy.value;
-
-  // Paso 1: Filtrar
-  let filtered = mascotasData.filter(m => {
-    // Filtro por tipo
-    if (typeFilter && m.tipo !== typeFilter) return false;
-
-    // Filtro por búsqueda (nombre, depto, contacto)
-    if (searchTerm) {
-      const nombre = m.nombre.toLowerCase();
-      const depto = m.departamento.toLowerCase();
-      const contacto = m.contacto.toLowerCase();
-      
-      if (!nombre.includes(searchTerm) && 
-          !depto.includes(searchTerm) && 
-          !contacto.includes(searchTerm)) {
-        return false;
-      }
-    }
-
-    return true;
+function renderPets() {
+  lista.replaceChildren(); const visible = filteredPets(); $("listCount").textContent = `${visible.length} mascota${visible.length === 1 ? "" : "s"}`;
+  if (!visible.length) { const empty = document.createElement("li"); empty.textContent = "No hay mascotas registradas."; lista.appendChild(empty); return; }
+  visible.forEach((pet) => {
+    const li = document.createElement("li"); const info = document.createElement("div"); info.className = "pet-info";
+    info.textContent = `${pet.tipo === "perro" ? "🐕" : "🐈"} ${pet.nombre} · ${pet.tipo} · ${pet.departamento}${currentUser.role === "admin" ? ` · ${pet.owner_name || "Sin asignar"}` : ""}`;
+    const actions = document.createElement("div"); actions.className = "pet-actions";
+    const edit = document.createElement("button"); edit.className = "btn-action btn-edit"; edit.textContent = "Editar"; edit.onclick = () => openEdit(pet);
+    const remove = document.createElement("button"); remove.className = "btn-action btn-delete"; remove.textContent = "Eliminar"; remove.onclick = () => { deletingId = pet.id; $("deletePetName").textContent = pet.nombre; deleteModal.classList.add("active"); };
+    actions.append(edit, remove); li.append(info, actions); lista.appendChild(li);
   });
-
-  // Paso 2: Ordenar
-  if (sortOption === "nombre-asc") {
-    filtered.sort((a, b) => a.nombre.localeCompare(b.nombre));
-  } else if (sortOption === "nombre-desc") {
-    filtered.sort((a, b) => b.nombre.localeCompare(a.nombre));
-  } else if (sortOption === "depto-asc") {
-    filtered.sort((a, b) => {
-      const deptoA = parseInt(a.departamento.replace(/\D/g, '')) || 0;
-      const deptoB = parseInt(b.departamento.replace(/\D/g, '')) || 0;
-      return deptoA - deptoB;
-    });
-  } else if (sortOption === "depto-desc") {
-    filtered.sort((a, b) => {
-      const deptoA = parseInt(a.departamento.replace(/\D/g, '')) || 0;
-      const deptoB = parseInt(b.departamento.replace(/\D/g, '')) || 0;
-      return deptoB - deptoA;
-    });
-  } else {
-    // Por defecto, más reciente (mismo orden de API que es descendente)
-    // Ya vienen en ese orden, no hacer nada
-  }
-
-  // Paso 3: Renderizar
-  lista.innerHTML = "";
-
-  if (filtered.length === 0) {
-    lista.innerHTML = '<li style="text-align: center; color: #999;">📭 No se encontraron mascotas</li>';
-    listCount.textContent = "0 mascotas";
-    return;
-  }
-
-  filtered.forEach(m => {
-    const li = document.createElement("li");
-    const icon = m.tipo === "perro" ? "🐕" : "🐈";
-    
-    li.innerHTML = `
-      <div class="pet-info">
-        <span>${icon} <strong>${m.nombre}</strong> • ${m.tipo.charAt(0).toUpperCase() + m.tipo.slice(1)} • Depto ${m.departamento}</span>
-      </div>
-      <div class="pet-actions">
-        <button type="button" class="btn-action btn-edit" data-id="${m.id}">✎ Editar</button>
-        <button type="button" class="btn-action btn-delete" data-id="${m.id}">🗑 Eliminar</button>
-      </div>
-    `;
-    
-    // Event listeners para botones
-    li.querySelector(".btn-edit").addEventListener("click", () => openEditModal(m));
-    li.querySelector(".btn-delete").addEventListener("click", () => openDeleteModal(m));
-    
-    lista.appendChild(li);
-  });
-
-  // Actualizar contador
-  listCount.textContent = `${filtered.length} mascota${filtered.length !== 1 ? 's' : ''}`;
 }
 
-// ====== CARGAR MASCOTAS ======
-async function cargarMascotas() {
-  lista.innerHTML = '';
-  const loadingItem = document.createElement("li");
-  loadingItem.style.textAlign = "center";
-  loadingItem.style.color = "#999";
-  loadingItem.innerHTML = '<span class="spinner"></span> Cargando mascotas...';
-  lista.appendChild(loadingItem);
-  
-  hideErrorBox();
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/mascotas`);
-    
-    if (!res.ok) {
-      throw new Error(`HTTP Error: ${res.status}`);
-    }
-    
-    const mascotas = await res.json();
-
-    if (!mascotas || mascotas.length === 0) {
-      mascotasData = [];
-      listCount.textContent = "0 mascotas";
-      lista.innerHTML = '<li style="text-align: center; color: #999;">📭 No hay mascotas registradas aún</li>';
-      return;
-    }
-
-    // Guardar datos y renderizar
-    mascotasData = mascotas;
-    renderMascotas();
-
-  } catch (err) {
-    console.error("[API] Error cargando mascotas:", err.message);
-    const isConnectionError = err.message.includes("Failed to fetch");
-    const message = isConnectionError 
-      ? `No se puede conectar a la API en ${API_BASE_URL}. Verifica que esté corriendo.`
-      : `Error al cargar mascotas: ${err.message}`;
-    
-    showErrorBox(message);
-    lista.innerHTML = '';
-  }
+async function loadPets() {
+  lista.textContent = "Cargando...";
+  try { pets = await api("/mascotas"); renderPets(); } catch (error) { lista.textContent = ""; showToast(error.message, "error"); }
 }
 
-// ====== SUBMIT FORMULARIO ======
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  // Validar formulario
-  if (!validateForm()) {
-    showToast("Por favor completa todos los campos correctamente", "warning", 4000);
-    return;
-  }
-
-  const nombre = document.getElementById("nombre").value.trim();
-  const tipo = document.getElementById("tipo").value;
-  let departamento = document.getElementById("depto").value.trim();
-  const contacto = document.getElementById("contacto").value.trim();
-
-  // Normalizar departamento (agregar "Depto " si no tiene)
-  if (!departamento.toLowerCase().startsWith("depto")) {
-    departamento = `Depto ${departamento}`;
-  }
-
-  const submitBtn = form.querySelector("button[type='submit']");
-  const originalText = submitBtn.textContent;
-  
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = '<span class="spinner"></span> Guardando...';
-
+form.addEventListener("submit", async (event) => {
+  event.preventDefault(); const button = form.querySelector("button[type=submit]"); button.disabled = true;
   try {
-    const res = await fetch(`${API_BASE_URL}/mascotas`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, tipo, departamento, contacto })
+    await api("/mascotas", { method: "POST", body: JSON.stringify({ nombre: $("nombre").value.trim(), tipo: $("tipo").value, departamento: $("depto").value.trim(), contacto: $("contacto").value.trim() }) });
+    form.reset(); if (currentUser.role === "resident") $("depto").value = currentUser.department; showToast("Mascota registrada.", "success"); loadPets();
+  } catch (error) { showToast(error.message, "error"); } finally { button.disabled = false; }
+});
+
+function openEdit(pet) {
+  editingId = pet.id; $("editNombre").value = pet.nombre; $("editTipo").value = pet.tipo; $("editDepto").value = pet.departamento; $("editContacto").value = pet.contacto;
+  $("editDepto").readOnly = currentUser.role === "resident"; editModal.classList.add("active");
+}
+$("btnSaveEdit").addEventListener("click", async () => {
+  try {
+    await api(`/mascotas/${editingId}`, { method: "PUT", body: JSON.stringify({ nombre: $("editNombre").value.trim(), tipo: $("editTipo").value, departamento: $("editDepto").value.trim(), contacto: $("editContacto").value.trim() }) });
+    editModal.classList.remove("active"); showToast("Mascota actualizada.", "success"); loadPets();
+  } catch (error) { showToast(error.message, "error"); }
+});
+$("btnCancelEdit").onclick = () => editModal.classList.remove("active");
+$("btnCancelDelete").onclick = () => deleteModal.classList.remove("active");
+$("btnConfirmDelete").addEventListener("click", async () => { try { await api(`/mascotas/${deletingId}`, { method: "DELETE" }); deleteModal.classList.remove("active"); showToast("Mascota eliminada.", "success"); loadPets(); } catch (error) { showToast(error.message, "error"); } });
+
+async function loadUsers() {
+  try {
+    const users = await api("/users"); const list = $("usersList"); list.replaceChildren();
+    users.forEach((user) => {
+      const li = document.createElement("li"); const text = document.createElement("span"); text.textContent = `${user.name} · ${user.email} · ${user.role === "admin" ? "Administrador" : `Depto ${user.department}`} · ${user.active ? "Activo" : "Desactivado"}`;
+      li.appendChild(text);
+      if (user.id !== currentUser.id) { const button = document.createElement("button"); button.className = "btn-action"; button.textContent = user.active ? "Desactivar" : "Activar"; button.onclick = async () => { try { await api(`/users/${user.id}/status`, { method: "PUT", body: JSON.stringify({ active: !user.active }) }); loadUsers(); } catch (error) { showToast(error.message, "error"); } }; li.appendChild(button); }
+      list.appendChild(li);
     });
+  } catch (error) { showToast(error.message, "error"); }
+}
 
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      throw new Error(error.error || `HTTP ${res.status}`);
-    }
-
-    showToast(`${nombre} registrado exitosamente`, "success");
-    form.reset();
-    cargarMascotas();
-
-  } catch (err) {
-    console.error("[API] Error al guardar:", err.message);
-    
-    if (err.message.includes("Failed to fetch")) {
-      showToast(`No se puede conectar a ${API_BASE_URL}`, "error");
-    } else {
-      showToast(`Error: ${err.message}`, "error");
-    }
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = originalText;
-  }
+$("residentForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    await api("/users", { method: "POST", body: JSON.stringify({ name: $("residentName").value.trim(), email: $("residentEmail").value.trim(), department: $("residentDepartment").value.trim(), password: $("residentPassword").value, role: "resident" }) });
+    event.currentTarget.reset(); showToast("Residente creado.", "success"); loadUsers();
+  } catch (error) { showToast(error.message, "error"); }
 });
 
-// ====== EVENT LISTENERS PARA MODALES ======
-btnCancelEdit.addEventListener("click", closeEditModal);
-btnSaveEdit.addEventListener("click", saveEdit);
+["searchInput", "filterType", "sortBy"].forEach((id) => $(id).addEventListener(id === "searchInput" ? "input" : "change", renderPets));
+$("clearFilters").onclick = () => { $("searchInput").value = ""; $("filterType").value = ""; $("sortBy").value = "reciente"; renderPets(); };
+editModal.onclick = (event) => { if (event.target === editModal) editModal.classList.remove("active"); };
+deleteModal.onclick = (event) => { if (event.target === deleteModal) deleteModal.classList.remove("active"); };
 
-btnCancelDelete.addEventListener("click", closeDeleteModal);
-btnConfirmDelete.addEventListener("click", confirmDelete);
-
-// Cerrar modal al hacer click en el overlay
-editModal.addEventListener("click", (e) => {
-  if (e.target === editModal) closeEditModal();
-});
-
-deleteModal.addEventListener("click", (e) => {
-  if (e.target === deleteModal) closeDeleteModal();
-});
-
-// Cerrar modales con tecla ESC
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    closeEditModal();
-    closeDeleteModal();
-  }
-});
-
-// ====== EVENT LISTENERS PARA HERRAMIENTAS DE LISTA ======
-searchInput.addEventListener("input", () => {
-  renderMascotas();
-});
-
-filterType.addEventListener("change", () => {
-  renderMascotas();
-});
-
-sortBy.addEventListener("change", () => {
-  renderMascotas();
-});
-
-clearFiltersBtn.addEventListener("click", () => {
-  searchInput.value = "";
-  filterType.value = "";
-  sortBy.value = "reciente";
-  renderMascotas();
-  showToast("Filtros limpios", "info");
-});
-
-// ====== INICIALIZACIÓN ======
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log(`[INFO] API URL: ${API_BASE_URL}`);
-  
-  const apiOk = await checkAPIConnection();
-  if (!apiOk) {
-    console.warn(`[WARN] API no accesible en ${API_BASE_URL}`);
-    showToast(`⚠️ API no responde. Intenta más tarde.`, "warning");
-  } else {
-    console.log("[INFO] API conectada");
-  }
-  
-  cargarMascotas();
+  if (!token) return clearSession();
+  try { const data = await api("/auth/me"); showApp(data.user); } catch { clearSession(); }
 });
-

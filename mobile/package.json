@@ -9,7 +9,9 @@
     "sync": "npm run sync:assets && npx cap sync",
     "android:add": "npx cap add android",
     "android:open": "npx cap open android",
-    "android:sync": "npm run sync && npx cap sync android"
+    "android:sync": "npm run sync && npx cap sync android",
+    "android:debug": "npm run android:sync && cd android && gradlew.bat assembleDebug",
+    "android:bundle": "npm run android:sync && cd android && gradlew.bat bundleRelease"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",

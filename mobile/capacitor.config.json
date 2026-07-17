@@ -3,6 +3,6 @@
   "appName": "Mascotas Salitrera",
   "webDir": "../frontend",
   "server": {
-    "androidScheme": "http"
+    "androidScheme": "https"
   }
 }
