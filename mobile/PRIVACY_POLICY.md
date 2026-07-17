@@ -13,7 +13,8 @@ de contacto del responsable.
 
 Usamos estos datos exclusivamente para autenticar a residentes, administrar
 cuentas y mantener el registro interno de mascotas. Los datos se almacenan en
-[PROVEEDOR Y PAÍS PENDIENTES], se transmiten mediante HTTPS y se conservan
+Neon (base de datos) y Render (API), en la región seleccionada al crear los
+servicios, se transmiten mediante HTTPS y se conservan
 mientras la persona sea residente o hasta que solicite su eliminación, salvo
 que una obligación legal exija conservarlos por más tiempo.
 

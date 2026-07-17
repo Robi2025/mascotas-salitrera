@@ -4,6 +4,6 @@ COPY package*.json ./
 RUN npm install --omit=dev
 COPY src ./src
 RUN mkdir -p /app/data
-ENV NODE_ENV=production PORT=3000 DB_PATH=/app/data/mascotas.db
+ENV NODE_ENV=production PORT=3000 DB_PATH=/tmp/mascotas.db
 EXPOSE 3000
 CMD ["npm", "start"]

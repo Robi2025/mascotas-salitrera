@@ -43,7 +43,7 @@ async function requireAuth(req, res, next) {
     const [scheme, token] = String(req.headers.authorization || "").split(" ");
     if (scheme !== "Bearer" || !token) return res.status(401).json({ error: "authentication_required" });
     const tokenHash = hashToken(token);
-    const user = await dbGet(`SELECT u.id, u.email, u.name, u.department, u.role, u.active FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > datetime('now') AND u.active = 1`, [tokenHash]);
+    const user = await dbGet(`SELECT u.id, u.email, u.name, u.department, u.role, u.active FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1`, [tokenHash, new Date().toISOString()]);
     if (!user) return res.status(401).json({ error: "invalid_session" });
     req.user = user; req.sessionTokenHash = tokenHash; next();
   } catch (error) { next(error); }
@@ -77,7 +77,8 @@ app.post("/auth/login", loginRateLimit, async (req, res, next) => {
     const user = await dbGet("SELECT * FROM users WHERE email = ? AND active = 1", [normalizeEmail(req.body?.email)]);
     if (!user || !(await verifyPassword(req.body?.password || "", user.password_hash))) return res.status(401).json({ error: "invalid_credentials" });
     const token = createSessionToken();
-    await dbRun("INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?, ?, datetime('now', ?))", [user.id, hashToken(token), `+${SESSION_DAYS} days`]);
+    const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000).toISOString();
+    await dbRun("INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?, ?, ?)", [user.id, hashToken(token), expiresAt]);
     attempts.delete(req.ip || "unknown"); res.json({ token, user: publicUser(user) });
   } catch (error) { next(error); }
 });
@@ -105,7 +106,7 @@ app.post("/users", requireAuth, requireAdmin, async (req, res, next) => {
 });
 app.put("/users/:id/status", requireAuth, requireAdmin, async (req, res, next) => {
   try {
-    const id = Number(req.params.id); const active = req.body?.active ? 1 : 0;
+    const id = Number(req.params.id); const active = Boolean(req.body?.active);
     if (id === req.user.id && !active) return res.status(400).json({ error: "cannot_disable_self" });
     const result = await dbRun("UPDATE users SET active = ? WHERE id = ?", [active, id]);
     if (!result.changes) return res.status(404).json({ error: "not_found" });

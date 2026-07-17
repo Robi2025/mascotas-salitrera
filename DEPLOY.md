@@ -1,16 +1,18 @@
 # Despliegue HTTPS
 
-El repositorio incluye `render.yaml` para crear el backend en Render con HTTPS
-y un disco persistente para SQLite. Render puede cobrar por el servicio y el
-disco; revisa el precio antes de confirmar.
+El repositorio incluye `render.yaml` para crear gratuitamente el backend en
+Render con HTTPS. Los datos persistentes se guardan en Neon PostgreSQL Free,
+porque el sistema de archivos de Render Free se elimina al reiniciar.
 
 ## 1. Crear el servicio
 
 1. Sube este repositorio a una cuenta privada de GitHub.
 2. En Render elige **New > Blueprint** y conecta el repositorio.
-3. Confirma el servicio `mascotas-salitrera-api` y su disco persistente.
-4. En **Environment**, conserva en secreto `BOOTSTRAP_SECRET`.
-5. Copia la URL HTTPS que entrega Render.
+3. Crea un proyecto gratuito en Neon y copia su cadena de conexión.
+4. Confirma el servicio Free `mascotas-salitrera-api` e introduce la cadena de
+   Neon únicamente en la variable secreta `DATABASE_URL`.
+5. En **Environment**, conserva en secreto `BOOTSTRAP_SECRET`.
+6. Copia la URL HTTPS que entrega Render.
 
 ## 2. Crear el primer administrador
 
@@ -34,6 +36,6 @@ permite crear otro administrador una vez que ya existe un usuario.
 Actualiza `frontend/config.js` con la URL HTTPS, ejecuta
 `cd mobile; npm run android:sync` y genera una nueva compilación.
 
-No uses almacenamiento efímero para `DB_PATH`: perderías usuarios y mascotas
-al reiniciar o desplegar. Realiza copias de seguridad periódicas del archivo
-SQLite del disco.
+No publiques ni compartas `DATABASE_URL`: contiene la contraseña de la base.
+El servicio gratuito de Render puede tardar cerca de un minuto en responder
+después de 15 minutos sin actividad. Exporta copias periódicas desde Neon.
