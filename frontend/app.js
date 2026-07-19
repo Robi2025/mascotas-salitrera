@@ -1,156 +1,32 @@
-const API_BASE_URL = window.APP_CONFIG?.apiBaseUrl || "http://localhost:3000";
-const TOKEN_KEY = "mascotas_session";
-let token = localStorage.getItem(TOKEN_KEY);
-let currentUser = null;
-let pets = [];
-let editingId = null;
-let deletingId = null;
-
-const $ = (id) => document.getElementById(id);
-const form = $("formMascota");
-const lista = $("lista");
-const loginCard = $("loginCard");
-const userBar = $("userBar");
-const adminCard = $("adminCard");
-const editModal = $("editModal");
-const deleteModal = $("deleteModal");
-
-function showToast(message, type = "info") {
-  const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
-  toast.textContent = message;
-  $("toast-container").appendChild(toast);
-  setTimeout(() => { toast.classList.add("fade-out"); setTimeout(() => toast.remove(), 300); }, 3200);
-}
-
-async function api(path, options = {}) {
-  const headers = { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
-  const data = await response.json().catch(() => ({}));
-  if (response.status === 401) { clearSession(); throw new Error("Tu sesión venció. Ingresa nuevamente."); }
-  if (!response.ok) throw new Error(errorMessage(data.error));
-  return data;
-}
-
-function errorMessage(code) {
-  const messages = {
-    invalid_credentials: "Correo o contraseña incorrectos.", too_many_attempts: "Demasiados intentos. Espera 15 minutos.",
-    email_exists: "Ese correo ya está registrado.", invalid_user_data: "Revisa los datos y la seguridad de la contraseña.",
-    invalid_pet_data: "Revisa los datos de la mascota.", forbidden: "No tienes permiso para esa acción.",
-    admin_required: "Esta acción requiere una cuenta administradora.", invalid_current_password: "La contraseña actual es incorrecta.",
-    weak_password: "La nueva contraseña debe tener 10 caracteres, mayúscula, minúscula y número."
-  };
-  return messages[code] || "No fue posible completar la operación.";
-}
-
-function clearSession() {
-  token = null; currentUser = null; localStorage.removeItem(TOKEN_KEY);
-  document.body.classList.remove("authenticated"); loginCard.classList.remove("hidden"); $("passwordCard").classList.add("hidden"); userBar.classList.add("hidden"); adminCard.classList.add("hidden");
-}
-
-function showApp(user) {
-  currentUser = user; document.body.classList.add("authenticated"); loginCard.classList.add("hidden"); $("passwordCard").classList.remove("hidden"); userBar.classList.remove("hidden");
-  $("currentUser").textContent = `${user.name} · ${user.role === "admin" ? "Administrador" : `Depto ${user.department}`}`;
-  const depto = $("depto");
-  if (user.role === "resident") { depto.value = user.department || ""; depto.readOnly = true; adminCard.classList.add("hidden"); }
-  else { depto.readOnly = false; adminCard.classList.remove("hidden"); loadUsers(); }
-  loadPets();
-}
-
-$("loginForm").addEventListener("submit", async (event) => {
-  event.preventDefault(); const button = event.currentTarget.querySelector("button"); button.disabled = true;
-  try {
-    const data = await api("/auth/login", { method: "POST", body: JSON.stringify({ email: $("loginEmail").value.trim(), password: $("loginPassword").value }) });
-    token = data.token; localStorage.setItem(TOKEN_KEY, token); event.currentTarget.reset(); showApp(data.user); showToast("Sesión iniciada.", "success");
-  } catch (error) { showToast(error.message, "error"); } finally { button.disabled = false; }
-});
-
-$("logoutBtn").addEventListener("click", async () => { try { await api("/auth/logout", { method: "POST" }); } catch {} clearSession(); });
-$("passwordForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  try {
-    await api("/auth/password", { method: "PUT", body: JSON.stringify({ currentPassword: $("currentPassword").value, newPassword: $("newPassword").value }) });
-    event.currentTarget.reset(); showToast("Contraseña actualizada.", "success");
-  } catch (error) { showToast(error.message, "error"); }
-});
-
-function filteredPets() {
-  const search = $("searchInput").value.toLowerCase().trim(); const type = $("filterType").value;
-  const result = pets.filter((pet) => !type || pet.tipo === type).filter((pet) => !search || [pet.nombre, pet.departamento, pet.contacto, pet.owner_name].some((v) => String(v || "").toLowerCase().includes(search)));
-  const sort = $("sortBy").value;
-  if (sort === "nombre-asc") result.sort((a, b) => a.nombre.localeCompare(b.nombre));
-  if (sort === "nombre-desc") result.sort((a, b) => b.nombre.localeCompare(a.nombre));
-  if (sort.startsWith("depto")) result.sort((a, b) => a.departamento.localeCompare(b.departamento, undefined, { numeric: true }) * (sort.endsWith("desc") ? -1 : 1));
-  return result;
-}
-
-function renderPets() {
-  lista.replaceChildren(); const visible = filteredPets(); $("listCount").textContent = `${visible.length} mascota${visible.length === 1 ? "" : "s"}`;
-  if (!visible.length) { const empty = document.createElement("li"); empty.textContent = "No hay mascotas registradas."; lista.appendChild(empty); return; }
-  visible.forEach((pet) => {
-    const li = document.createElement("li"); const info = document.createElement("div"); info.className = "pet-info";
-    info.textContent = `${pet.tipo === "perro" ? "🐕" : "🐈"} ${pet.nombre} · ${pet.tipo} · ${pet.departamento}${currentUser.role === "admin" ? ` · ${pet.owner_name || "Sin asignar"}` : ""}`;
-    const actions = document.createElement("div"); actions.className = "pet-actions";
-    const edit = document.createElement("button"); edit.className = "btn-action btn-edit"; edit.textContent = "Editar"; edit.onclick = () => openEdit(pet);
-    const remove = document.createElement("button"); remove.className = "btn-action btn-delete"; remove.textContent = "Eliminar"; remove.onclick = () => { deletingId = pet.id; $("deletePetName").textContent = pet.nombre; deleteModal.classList.add("active"); };
-    actions.append(edit, remove); li.append(info, actions); lista.appendChild(li);
-  });
-}
-
-async function loadPets() {
-  lista.textContent = "Cargando...";
-  try { pets = await api("/mascotas"); renderPets(); } catch (error) { lista.textContent = ""; showToast(error.message, "error"); }
-}
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault(); const button = form.querySelector("button[type=submit]"); button.disabled = true;
-  try {
-    await api("/mascotas", { method: "POST", body: JSON.stringify({ nombre: $("nombre").value.trim(), tipo: $("tipo").value, departamento: $("depto").value.trim(), contacto: $("contacto").value.trim() }) });
-    form.reset(); if (currentUser.role === "resident") $("depto").value = currentUser.department; showToast("Mascota registrada.", "success"); loadPets();
-  } catch (error) { showToast(error.message, "error"); } finally { button.disabled = false; }
-});
-
-function openEdit(pet) {
-  editingId = pet.id; $("editNombre").value = pet.nombre; $("editTipo").value = pet.tipo; $("editDepto").value = pet.departamento; $("editContacto").value = pet.contacto;
-  $("editDepto").readOnly = currentUser.role === "resident"; editModal.classList.add("active");
-}
-$("btnSaveEdit").addEventListener("click", async () => {
-  try {
-    await api(`/mascotas/${editingId}`, { method: "PUT", body: JSON.stringify({ nombre: $("editNombre").value.trim(), tipo: $("editTipo").value, departamento: $("editDepto").value.trim(), contacto: $("editContacto").value.trim() }) });
-    editModal.classList.remove("active"); showToast("Mascota actualizada.", "success"); loadPets();
-  } catch (error) { showToast(error.message, "error"); }
-});
-$("btnCancelEdit").onclick = () => editModal.classList.remove("active");
-$("btnCancelDelete").onclick = () => deleteModal.classList.remove("active");
-$("btnConfirmDelete").addEventListener("click", async () => { try { await api(`/mascotas/${deletingId}`, { method: "DELETE" }); deleteModal.classList.remove("active"); showToast("Mascota eliminada.", "success"); loadPets(); } catch (error) { showToast(error.message, "error"); } });
-
-async function loadUsers() {
-  try {
-    const users = await api("/users"); const list = $("usersList"); list.replaceChildren();
-    users.forEach((user) => {
-      const li = document.createElement("li"); const text = document.createElement("span"); text.textContent = `${user.name} · ${user.email} · ${user.role === "admin" ? "Administrador" : `Depto ${user.department}`} · ${user.active ? "Activo" : "Desactivado"}`;
-      li.appendChild(text);
-      if (user.id !== currentUser.id) { const button = document.createElement("button"); button.className = "btn-action"; button.textContent = user.active ? "Desactivar" : "Activar"; button.onclick = async () => { try { await api(`/users/${user.id}/status`, { method: "PUT", body: JSON.stringify({ active: !user.active }) }); loadUsers(); } catch (error) { showToast(error.message, "error"); } }; li.appendChild(button); }
-      list.appendChild(li);
-    });
-  } catch (error) { showToast(error.message, "error"); }
-}
-
-$("residentForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  try {
-    await api("/users", { method: "POST", body: JSON.stringify({ name: $("residentName").value.trim(), email: $("residentEmail").value.trim(), department: $("residentDepartment").value.trim(), password: $("residentPassword").value, role: "resident" }) });
-    event.currentTarget.reset(); showToast("Residente creado.", "success"); loadUsers();
-  } catch (error) { showToast(error.message, "error"); }
-});
-
-["searchInput", "filterType", "sortBy"].forEach((id) => $(id).addEventListener(id === "searchInput" ? "input" : "change", renderPets));
-$("clearFilters").onclick = () => { $("searchInput").value = ""; $("filterType").value = ""; $("sortBy").value = "reciente"; renderPets(); };
-editModal.onclick = (event) => { if (event.target === editModal) editModal.classList.remove("active"); };
-deleteModal.onclick = (event) => { if (event.target === deleteModal) deleteModal.classList.remove("active"); };
-
-document.addEventListener("DOMContentLoaded", async () => {
-  if (!token) return clearSession();
-  try { const data = await api("/auth/me"); showApp(data.user); } catch { clearSession(); }
-});
+const API=(window.APP_CONFIG?.apiBaseUrl||"http://localhost:3000").replace(/\/$/,"");
+const $=(s,e=document)=>e.querySelector(s), $$=(s,e=document)=>[...e.querySelectorAll(s)];
+const state={token:localStorage.getItem("ms_token"),user:null,pets:[],users:[],messages:[],page:"pets"};
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const fallbackPet=p=>p.tipo==="gato"?"🐈":p.tipo==="ave"?"🐦":p.tipo==="conejo"?"🐇":"🐕";
+const avatarStyle=u=>u?.avatar_data?`style="background-image:url('${u.avatar_data}')"`:"";
+function toast(msg){const e=$("#toast");e.textContent=msg;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3000)}
+async function api(path,opt={}){const h={"Content-Type":"application/json",...(opt.headers||{})};if(state.token)h.Authorization=`Bearer ${state.token}`;const r=await fetch(API+path,{...opt,headers:h});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"request_failed");return d}
+async function fileData(file){if(!file)return null;const img=new Image(),url=URL.createObjectURL(file);await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src=url});const max=900,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement("canvas");canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);URL.revokeObjectURL(url);return canvas.toDataURL("image/jpeg",.78)}
+function friendly(e){return({invalid_credentials:"Correo o contraseña incorrectos.",email_exists:"Ese correo ya está registrado.",invalid_user_data:"Completa correctamente todos los datos.",weak_password:"La contraseña no cumple los requisitos.",invalid_pet_data:"Faltan datos de la mascota.",authentication_required:"Vuelve a ingresar a tu cuenta.",internal_error:"No se pudo completar la operación."})[e.message]||"No se pudo conectar. Intenta nuevamente."}
+$$("[data-auth]").forEach(b=>b.onclick=()=>{$$("[data-auth]").forEach(x=>x.classList.toggle("active",x===b));$("#loginForm").classList.toggle("hidden",b.dataset.auth!=="login");$("#registerForm").classList.toggle("hidden",b.dataset.auth!=="register")});
+$("#loginForm").onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target),d=await api("/auth/login",{method:"POST",body:JSON.stringify({email:f.get("email"),password:f.get("password")})});state.token=d.token;state.user=d.user;localStorage.setItem("ms_token",d.token);await enter()}catch(x){toast(friendly(x))}};
+$("#registerForm").onsubmit=async e=>{e.preventDefault();const b=$("button",e.target);b.disabled=true;try{const f=new FormData(e.target),payload=Object.fromEntries(f);payload.avatar_data=await fileData(f.get("avatar"));delete payload.avatar;await api("/auth/register",{method:"POST",body:JSON.stringify(payload)});toast("Cuenta creada. Ahora ingresa.");$('[data-auth="login"]').click();$("#loginForm [name=email]").value=payload.email;e.target.reset()}catch(x){toast(friendly(x))}finally{b.disabled=false}};
+async function enter(){try{if(!state.user)state.user=(await api("/auth/me")).user;await Promise.all([loadPets(),loadUsers(),loadMessages()]);$("#authScreen").classList.add("hidden");$("#app").classList.remove("hidden");setAvatar();render()}catch(e){logout(false)}}
+async function loadPets(){state.pets=await api("/mascotas")} async function loadUsers(){state.users=await api("/users")} async function loadMessages(){state.messages=await api("/messages")}
+function setAvatar(){const b=$("#profileBtn");b.style.backgroundImage=state.user.avatar_data?`url("${state.user.avatar_data}")`:"none";b.textContent=state.user.avatar_data?"":state.user.name?.[0]||"☺"}
+function logout(show=true){state.token=null;state.user=null;localStorage.removeItem("ms_token");$("#app").classList.add("hidden");$("#authScreen").classList.remove("hidden");if(show)toast("Sesión cerrada")}
+function petCard(p){return `<article class="pet-card" data-pet="${p.id}"><div class="pet-photo" ${p.photo_data?`style="background-image:url('${p.photo_data}')"`:""}>${p.photo_data?"":fallbackPet(p)}</div><div class="tag">Estado: ${esc(p.is_lost?"Extraviada":p.status||"En casa")}</div><h3>${esc(p.nombre)}</h3><div class="sub">${esc(p.tipo.toUpperCase())} • ${esc(p.breed||"Sin raza")}</div></article>`}
+function searchBox(){return '<div class="search"><input id="searchInput" placeholder="Buscar"></div>'}
+function render(){const titles={pets:"Mascotas",owners:"Propietarios",lost:"Mascotas extraviadas",chat:"Chat Vecinos"};$("#pageTitle").textContent=titles[state.page];$$("[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));({pets:renderPets,owners:renderOwners,lost:renderLost,chat:renderChat}[state.page])()}
+function renderPets(q=""){const pets=state.pets.filter(p=>(p.nombre+" "+p.tipo+" "+(p.breed||"")).toLowerCase().includes(q.toLowerCase()));$("#content").innerHTML=`<div class="hero-note"><b>¡Bienvenido!</b> Aquí puedes registrar y cuidar a las mascotas de nuestro condominio. Comparte información de tus compañeros felinos, caninos y otras mascotas.</div><div class="section-head"><h2>Mascotas</h2><button class="add" id="addPet">＋ Agregar</button></div>${searchBox()}<div class="pet-grid">${pets.map(petCard).join("")}</div>${pets.length?"":'<div class="empty">No hay mascotas registradas todavía.</div>'}`;$("#addPet").onclick=()=>petForm();$("#searchInput").oninput=e=>renderPets(e.target.value);$$("[data-pet]").forEach(x=>x.onclick=()=>petDetail(Number(x.dataset.pet)))}
+function renderOwners(q=""){const users=state.users.filter(u=>u.role==="resident"&&(u.name+" "+u.tower+" "+u.department).toLowerCase().includes(q.toLowerCase()));$("#content").innerHTML=`<div class="section-head"><h2>Propietarios</h2></div>${searchBox()}<div class="owner-list">${users.map(u=>`<article class="owner-card" data-owner="${u.id}"><div class="avatar" ${avatarStyle(u)}>${u.avatar_data?"":esc(u.name[0])}</div><div class="info"><h3>${esc(u.name)}</h3><p>${esc(u.tower||"")} · Depto. ${esc(u.department||"")}</p></div><span class="chev">›</span></article>`).join("")}</div>`;$("#searchInput").oninput=e=>renderOwners(e.target.value);$$("[data-owner]").forEach(x=>x.onclick=()=>ownerDetail(Number(x.dataset.owner)))}
+function renderLost(q=""){const pets=state.pets.filter(p=>p.is_lost&&(p.nombre+" "+p.lost_details).toLowerCase().includes(q.toLowerCase()));$("#content").innerHTML=`<div class="section-head"><h2>Extraviadas</h2><button class="add" id="reportLost">＋ Reportar</button></div>${searchBox()}${pets.map(p=>`<article class="lost-card" data-pet="${p.id}"><div class="pet-photo" ${p.photo_data?`style="background-image:url('${p.photo_data}')"`:""}>${p.photo_data?"":fallbackPet(p)}</div><div class="lost-info"><span class="danger">EXTRAVIADA</span><h3>${esc(p.nombre)}</h3><p>${esc(p.lost_details||"Contacta a su propietario si la ves.")}</p></div></article>`).join("")}${pets.length?"":'<div class="empty">No hay mascotas extraviadas. 💛</div>'}`;$("#reportLost").onclick=()=>petForm(null,true);$("#searchInput").oninput=e=>renderLost(e.target.value);$$("[data-pet]").forEach(x=>x.onclick=()=>petDetail(Number(x.dataset.pet)))}
+function renderChat(){state.messages.sort((a,b)=>b.id-a.id);$("#content").innerHTML=`<div class="section-head"><h2>Chat Vecinos</h2></div><form id="messageForm" class="chat-compose"><input name="content" maxlength="500" placeholder="Escribe un mensaje para tus vecinos" required><button>Enviar</button></form><div class="message-list">${state.messages.map(m=>`<article class="message-card"><div class="avatar" ${m.user_avatar?`style="background-image:url('${m.user_avatar}')"`:""}>${m.user_avatar?"":esc(m.user_name?.[0]||"?")}</div><div class="info"><span class="date">${new Date(m.created_at).toLocaleString("es-CL")}</span><h3>${esc(m.user_name)}</h3><p>${esc(m.content)}</p></div></article>`).join("")}</div>`;$("#messageForm").onsubmit=async e=>{e.preventDefault();try{const content=new FormData(e.target).get("content"),m=await api("/messages",{method:"POST",body:JSON.stringify({content})});state.messages.unshift(m);renderChat()}catch(x){toast(friendly(x))}}}
+$$("[data-page]").forEach(b=>b.onclick=()=>{state.page=b.dataset.page;render()});
+function openModal(title,html){$("#modalTitle").textContent=title;$("#modalBody").innerHTML=html;$("#modal").classList.remove("hidden")} function closeModal(){$("#modal").classList.add("hidden")} $("#closeModal").onclick=closeModal;$("#modal").onclick=e=>{if(e.target===$("#modal"))closeModal()};
+function petForm(p=null,lost=false){const own=p&&Number(p.user_id)===Number(state.user.id),canEdit=!p||own||state.user.role==="admin";if(!canEdit)return toast("Solo el propietario puede editar esta mascota.");openModal(p?"Editar mascota":lost?"Reportar mascota extraviada":"Registrar mascota",`<form id="petForm"><label>Foto de la mascota<input name="photo" type="file" accept="image/*" ${p?"":"required"}></label><label>Nombre<input name="nombre" value="${esc(p?.nombre||"")}" required></label><div class="row"><label>Especie<select name="tipo" required>${["perro","gato","ave","conejo","otro"].map(x=>`<option ${p?.tipo===x?"selected":""}>${x}</option>`).join("")}</select></label><label>Raza<input name="breed" value="${esc(p?.breed||"")}"></label></div><div class="row"><label>Fecha de nacimiento<input name="birth_date" type="date" value="${esc(p?.birth_date||"")}"></label><label>Color<input name="color" value="${esc(p?.color||"")}"></label></div><label>Estado<select name="status"><option>En casa</option><option>Indoor</option><option>Exterior</option><option>Senior</option></select></label><label>Información adicional<textarea name="notes" rows="3">${esc(p?.notes||"")}</textarea></label><label class="check"><input name="is_lost" type="checkbox" ${lost||p?.is_lost?"checked":""}> Está extraviada</label><label>Información para encontrarla<textarea name="lost_details" rows="3">${esc(p?.lost_details||"")}</textarea></label><button class="primary">Guardar mascota</button>${p?'<button type="button" id="deletePet">Eliminar mascota</button>':""}</form>`);$("#petForm").onsubmit=async e=>{e.preventDefault();const b=$(".primary",e.target);b.disabled=true;try{const f=new FormData(e.target),o=Object.fromEntries(f);o.is_lost=f.has("is_lost");o.photo_data=await fileData(f.get("photo"))||p?.photo_data||null;delete o.photo;await api(p?`/mascotas/${p.id}`:"/mascotas",{method:p?"PUT":"POST",body:JSON.stringify(o)});await loadPets();closeModal();render();toast("Mascota guardada correctamente.")}catch(x){toast(friendly(x))}finally{b.disabled=false}};if(p)$("#deletePet").onclick=async()=>{if(confirm(`¿Eliminar a ${p.nombre}?`)){await api(`/mascotas/${p.id}`,{method:"DELETE"});await loadPets();closeModal();render()}}}
+function petDetail(id){const p=state.pets.find(x=>Number(x.id)===id);if(!p)return;const age=p.birth_date?Math.max(0,new Date().getFullYear()-new Date(p.birth_date).getFullYear()):"—";openModal(p.nombre,`<div class="photo-preview" ${p.photo_data?`style="background-image:url('${p.photo_data}')"`:""}></div><h1>${esc(p.nombre.toUpperCase())}</h1><div class="actions"><button id="editPet">✎ Editar</button><button id="ownerPet">♙ Propietario</button></div><h2>Detalles de la mascota</h2><div class="details">${[["Especie",p.tipo],["Raza",p.breed||"—"],["Edad",age],["Nacimiento",p.birth_date||"—"],["Color",p.color||"—"],["Estado",p.is_lost?"Extraviada":p.status],["Torre",p.owner_tower||"—"],["Departamento",p.departamento],["Información",p.notes||"—"]].map(x=>`<div class="detail"><span>${x[0]}</span><b>${esc(x[1])}</b></div>`).join("")}</div>`);$("#editPet").onclick=()=>petForm(p);$("#ownerPet").onclick=()=>ownerDetail(Number(p.user_id))}
+function ownerDetail(id){const u=state.users.find(x=>Number(x.id)===id)||state.user, pets=state.pets.filter(p=>Number(p.user_id)===id);openModal("Propietario",`<div class="profile-top"><div class="avatar" ${avatarStyle(u)}>${u.avatar_data?"":esc(u.name?.[0]||"?")}</div><h2>${esc(u.name)}</h2></div><div class="actions">${Number(u.id)===Number(state.user.id)?'<button id="editProfile">✎ Editar</button>':""}<button onclick="location.href='mailto:${esc(u.email)}'">✉ Contactar</button></div><h2>Información de contacto</h2><div class="details">${[["Email",u.email],["Teléfono",u.phone||"—"],["Torre",u.tower||"—"],["Departamento",u.department||"—"],["Fecha de registro",new Date(u.created_at).toLocaleDateString("es-CL")]].map(x=>`<div class="detail"><span>${x[0]}</span><b>${esc(x[1])}</b></div>`).join("")}</div><h2>Mascotas</h2><div class="pet-grid">${pets.map(petCard).join("")}</div>`);if($("#editProfile"))$("#editProfile").onclick=profileForm;$$("[data-pet]",$("#modalBody")).forEach(x=>x.onclick=()=>petDetail(Number(x.dataset.pet)))}
+function profileForm(){const u=state.user;openModal("Editar mi ficha",`<form id="profileForm"><label>Foto<input name="avatar" type="file" accept="image/*"></label><label>Nombre completo<input name="name" value="${esc(u.name)}" required></label><div class="row"><label>Torre<select name="tower"><option ${u.tower==="María Elena"?"selected":""}>María Elena</option><option ${u.tower==="Alemania"?"selected":""}>Alemania</option></select></label><label>Departamento<input name="department" value="${esc(u.department||"")}" required></label></div><label>Teléfono<input name="phone" value="${esc(u.phone||"")}" required></label><label>Acerca de mí<textarea name="bio">${esc(u.bio||"")}</textarea></label><button class="primary">Guardar ficha</button><button type="button" id="logout">Cerrar sesión</button></form>`);$("#profileForm").onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target),o=Object.fromEntries(f);o.avatar_data=await fileData(f.get("avatar"))||u.avatar_data||null;delete o.avatar;state.user=(await api("/users/me",{method:"PUT",body:JSON.stringify(o)})).user;await loadUsers();setAvatar();closeModal();render();toast("Ficha actualizada.")}catch(x){toast(friendly(x))}};$("#logout").onclick=()=>{closeModal();logout()}}
+$("#profileBtn").onclick=()=>ownerDetail(Number(state.user.id));
+if(state.token)enter();
