@@ -5,7 +5,7 @@ import { dirname } from "node:path";
 
 function postgresSql(sql) {
   let position = 0;
-  return sql.replace(/\?/g, () => `$${++position}`).replace(/active = 1/g, "active = TRUE");
+  return sql.replace(/\?/g, () => `$${++position}`).replace(/\bactive\s*=\s*1\b/g, "active = TRUE");
 }
 class PostgresCompat {
   constructor(connectionString) { this.isPostgres = true; this.pool = new pg.Pool({ connectionString, max: 5 }); }
