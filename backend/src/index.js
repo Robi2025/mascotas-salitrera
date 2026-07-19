@@ -9,7 +9,7 @@ const PORT = Number(process.env.PORT || 3000);
 const db = openDb(process.env.DB_PATH || "./data/mascotas.db");
 const SESSION_DAYS = Math.max(1, Number(process.env.SESSION_DAYS || 30));
 const origins = (process.env.ALLOWED_ORIGINS || "").split(",").map((v) => v.trim()).filter(Boolean);
-const allowedOrigins = new Set(["http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000", "https://localhost", ...origins]);
+const allowedOrigins = new Set(["http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000", "http://localhost", "https://localhost", "capacitor://localhost", ...origins]);
 await initDb(db);
 const get = (sql, p = []) => new Promise((ok, no) => db.get(sql, p, (e, r) => e ? no(e) : ok(r)));
 const all = (sql, p = []) => new Promise((ok, no) => db.all(sql, p, (e, r) => e ? no(e) : ok(r || [])));
